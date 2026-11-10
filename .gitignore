@@ -1,6 +1,11 @@
-# Received files (keep folder, ignore contents)
+# Received files
 received/*
 !received/.gitkeep
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
 
 # Python cache
 __pycache__/
