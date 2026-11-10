@@ -11,8 +11,8 @@ import socket
 import threading
 import json
 import urllib.parse
-import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
+import webview
 
 PORT = 7777
 if getattr(sys, 'frozen', False):
@@ -230,9 +230,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                 <p>Transferência Direta de Ficheiros PC para PC</p>
             </div>
         </div>
-        <div class="pill">
+        <div class="pill" onclick="navigator.clipboard.writeText('http://{{LOCAL_IP}}:{{PORT}}'); alert('Link copiado! No outro PC basta abrir no browser:\nhttp://{{LOCAL_IP}}:{{PORT}}');" style="cursor:pointer;" title="Clica para copiar o link para o outro PC">
             <div class="dot"></div>
-            <span id="host-ip">Conectado na LAN</span>
+            <span id="host-ip">No outro PC acede a: <strong>http://{{LOCAL_IP}}:{{PORT}}</strong> (Clica p/ copiar)</span>
         </div>
     </div>
 
@@ -363,10 +363,12 @@ class TransferHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         if path == "/" or path == "/index.html":
+            local_ip = get_local_ip()
+            rendered = HTML_TEMPLATE.replace("{{LOCAL_IP}}", local_ip).replace("{{PORT}}", str(PORT))
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
             self.end_headers()
-            self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
+            self.wfile.write(rendered.encode("utf-8"))
             return
 
         elif path == "/api/files":
@@ -439,29 +441,43 @@ class TransferHandler(BaseHTTPRequestHandler):
         self.send_error(404, "Endpoint desconhecido.")
 
 
+def run_server(httpd):
+    try:
+        httpd.serve_forever()
+    except Exception:
+        pass
+
 def main():
     local_ip = get_local_ip()
     server_address = ('', PORT)
-    httpd = HTTPServer(server_address, TransferHandler)
+    try:
+        httpd = HTTPServer(server_address, TransferHandler)
+        server_thread = threading.Thread(target=run_server, args=(httpd,), daemon=True)
+        server_thread.start()
+    except Exception:
+        httpd = None
 
     print("=" * 60)
     print("           TRANSFER++  |  PC-TO-PC FILE TRANSFER")
     print("=" * 60)
     print(f"[+] Servidor ativo!")
-    print(f"[+] Acede neste PC ou em qualquer outro PC da rede atraves de:")
-    print(f"    --> http://{local_ip}:{PORT}")
+    print(f"[+] No outro PC, acede a: http://{local_ip}:{PORT}")
     print(f"[+] Pasta de rececao: {RECEIVE_DIR}")
     print("=" * 60)
-    print("[*] A abrir o browser automaticamente...")
-    print("[*] Pressiona Ctrl+C para encerrar.")
+    print("[*] A abrir janela nativa desktop da aplicacao...")
 
-    # Automatically open web UI in default browser
-    threading.Timer(0.6, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
+    # Open PyWebView native desktop window (no external browser required!)
+    window = webview.create_window(
+        title="Transfer++",
+        url=f"http://127.0.0.1:{PORT}",
+        width=980,
+        height=740,
+        min_size=(700, 500),
+        background_color="#0b0e14"
+    )
+    webview.start()
 
-    try:
-        httpd.serve_forever()
-    except KeyboardInterrupt:
-        print("\n[*] Servidor encerrado.")
+    if httpd:
         httpd.server_close()
 
 if __name__ == "__main__":
