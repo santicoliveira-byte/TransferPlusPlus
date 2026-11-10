@@ -11,11 +11,15 @@ import socket
 import threading
 import json
 import urllib.parse
+import webbrowser
 from http.server import HTTPServer, BaseHTTPRequestHandler
-import cgi
 
 PORT = 7777
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(os.path.abspath(sys.executable))
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 RECEIVE_DIR = os.path.join(BASE_DIR, "received")
 os.makedirs(RECEIVE_DIR, exist_ok=True)
 
@@ -448,7 +452,11 @@ def main():
     print(f"    --> http://{local_ip}:{PORT}")
     print(f"[+] Pasta de rececao: {RECEIVE_DIR}")
     print("=" * 60)
+    print("[*] A abrir o browser automaticamente...")
     print("[*] Pressiona Ctrl+C para encerrar.")
+
+    # Automatically open web UI in default browser
+    threading.Timer(0.6, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
 
     try:
         httpd.serve_forever()
