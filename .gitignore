@@ -1,0 +1,8 @@
+# Received files (keep folder, ignore contents)
+received/*
+!received/.gitkeep
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
